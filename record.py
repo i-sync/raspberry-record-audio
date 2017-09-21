@@ -77,6 +77,7 @@ def start_process(channel):
         res = get_mpc_status('playing')
         if res > 0:
             update_mpc_status('pause')
+            logging.info('mpc is running, pause...')
 
         start_time = time.time()
         GPIO.output(18, GPIO.HIGH)
@@ -101,6 +102,7 @@ def start_process(channel):
         res = get_mpc_status('paused')
         if res > 0:
             update_mpc_status('play')
+            logging.info('mpc is paused, play...')
 
         GPIO.output(18, GPIO.LOW)
         logging.info('stop record')
