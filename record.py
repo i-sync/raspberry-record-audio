@@ -29,10 +29,33 @@ GPIO.setup(18, GPIO.OUT, initial = GPIO.LOW) # set pin18 output
 GPIO.setup(19, GPIO.IN, pull_up_down = GPIO.PUD_DOWN)  # set pin19 input
 
 def get_arecord_pid():
+    '''
+    Get Current Arecord PID
+    '''
     command = "ps aux | grep arecord | grep -v grep | awk '{print $2}'"
     pid = subprocess.check_output(command, shell = True)
     pid = pid.decode('utf-8').strip('\n')
     return pid
+
+def get_mpc_status(state):
+    '''
+    Get Current MPC status
+    '''
+    playing = "mpc | grep playing | wc -l"
+    paused = "mpc | grep paused | wc -l"
+    result = 0
+    if state == 'playing':
+        result = int(subprocess.check_output(playing, shell = True).decode('utf-8').strip('\n'))
+    else:
+        result = int(subprocess.check_output(paused, shell = True).decode('utf-8').strip('\n'))
+    return result
+
+def update_mpc_status(state):
+    '''
+    Update MPC status 
+    '''
+    command = "mpc play" if state == "play" else "mpc pause"
+    subprocess.check_output(command, shell = True)
 
 # flag open or close
 led_flag = False
@@ -49,6 +72,12 @@ def start_process(channel):
     global led_flag
     led_flag = not led_flag
     if led_flag:
+        #before start record voice, check mpc status
+        #if mpc is running, pause
+        res = get_mpc_status('playing')
+        if res > 0:
+            update_mpc_status('pause')
+
         start_time = time.time()
         GPIO.output(18, GPIO.HIGH)
         current_time = datetime.today().strftime("%Y%m%d-%X")
@@ -66,6 +95,12 @@ def start_process(channel):
             subprocess.call(command, shell = True)
             mv = 'mv /home/pi/telegram/tmp/{}.wav /home/pi/telegram/files/{}.wav'.format(file_name, file_name.format(duration))
             subprocess.call(mv, shell = True)
+
+        #after record voice, check mpc is paused
+        #if status is paused, play mpc
+        res = get_mpc_status('paused')
+        if res > 0:
+            update_mpc_status('play')
 
         GPIO.output(18, GPIO.LOW)
         logging.info('stop record')
